@@ -1,0 +1,27 @@
+# Flutter
+.dart_tool/
+.packages
+pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Build outputs (except web)
+build/
+!build/web/
+
+# Testing
+coverage/
+test/
+
+# Documentation that's not needed in deployment
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
