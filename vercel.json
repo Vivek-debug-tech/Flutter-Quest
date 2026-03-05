@@ -1,12 +1,12 @@
 {
-  "buildCommand": "flutter build web --release",
+  "buildCommand": null,
   "outputDirectory": "build/web",
-  "installCommand": "if ! which flutter > /dev/null; then git clone https://github.com/flutter/flutter.git -b stable --depth 1 && export PATH=\"$PATH:`pwd`/flutter/bin\" && flutter doctor; fi",
+  "installCommand": null,
   "framework": null,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
