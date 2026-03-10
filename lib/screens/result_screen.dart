@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/level_model.dart';
-import '../services/xp_service.dart';
+import '../models/world_model.dart';
+import '../utils/xp_calculator.dart';
 import '../widgets/star_rating.dart';
 import '../widgets/learning_progress_indicator.dart';
+import '../data/worlds_data.dart';
+import 'lesson_screen.dart';
+import 'level_screen.dart';
 
 class ResultScreen extends StatefulWidget {
   final Level level;
@@ -30,18 +34,9 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
 
-    // Calculate results
-    _earnedXP = XPService.calculateXP(
-      baseXP: widget.level.baseXP,
-      hintsUsed: widget.hintsUsed,
-      mistakesMade: widget.mistakesMade,
-      challengeType: widget.level.challengeType,
-    );
-
-    _stars = XPService.calculateStars(
-      hintsUsed: widget.hintsUsed,
-      mistakesMade: widget.mistakesMade,
-    );
+    // Calculate results using the new XP Calculator
+    _earnedXP = XPCalculator.calculateXP(widget.hintsUsed);
+    _stars = XPCalculator.calculateStars(widget.hintsUsed);
 
     // Setup animations
     _animationController = AnimationController(
@@ -136,6 +131,24 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
 
                 // Stars
                 StarRating(stars: _stars, size: 48),
+                const SizedBox(height: 16),
+                
+                // Performance message
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    XPCalculator.getPerformanceText(widget.hintsUsed),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 32),
 
                 // Stats Card
@@ -252,11 +265,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pop(context);
-                          Navigator.pop(context);
-                        },
+                        onPressed: () => _handleNextLevel(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.purple.shade700,
@@ -265,9 +274,9 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Home',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        child: Text(
+                          _getNextButtonText(),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -315,5 +324,83 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
         ),
       ],
     );
+  }
+
+  String _getNextButtonText() {
+    // Find the current world and level index
+    final worlds = GameData.getAllWorlds();
+    World? currentWorld;
+    int? levelIndex;
+
+    // Find which world this level belongs to
+    for (final world in worlds) {
+      for (int i = 0; i < world.levels.length; i++) {
+        if (world.levels[i].id == widget.level.id) {
+          currentWorld = world;
+          levelIndex = i;
+          break;
+        }
+      }
+      if (currentWorld != null) break;
+    }
+
+    // If we couldn't find the world, show generic text
+    if (currentWorld == null || levelIndex == null) {
+      return 'Next Level';
+    }
+    
+    // Check if this is the last level in the world
+    final isLastLevel = levelIndex >= currentWorld.levels.length - 1;
+    return isLastLevel ? 'Finish World' : 'Next Level';
+  }
+
+  void _handleNextLevel(BuildContext context) {
+    // Find the current world and level index
+    final worlds = GameData.getAllWorlds();
+    World? currentWorld;
+    int? levelIndex;
+
+    // Find which world this level belongs to
+    for (final world in worlds) {
+      for (int i = 0; i < world.levels.length; i++) {
+        if (world.levels[i].id == widget.level.id) {
+          currentWorld = world;
+          levelIndex = i;
+          break;
+        }
+      }
+      if (currentWorld != null) break;
+    }
+
+    // If we couldn't find the world, just go back
+    if (currentWorld == null || levelIndex == null) {
+      Navigator.pop(context);
+      Navigator.pop(context);
+      return;
+    }
+
+    final isLastLevel = levelIndex >= currentWorld.levels.length - 1;
+    
+    if (isLastLevel) {
+      // Last level - go back to world's level screen
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LevelScreen(world: currentWorld!),
+        ),
+        (route) => false,
+      );
+    } else {
+      // Navigate to next level
+      final nextIndex = levelIndex + 1;
+      final nextLevel = currentWorld.levels[nextIndex];
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LessonScreen(level: nextLevel),
+        ),
+      );
+    }
   }
 }

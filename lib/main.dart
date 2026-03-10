@@ -3,10 +3,23 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/storage_service.dart';
 import 'services/progress_service.dart';
+import 'config/dev_config.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Developer Mode Warning
+  if (DevConfig.devMode) {
+    print("\n" + "="*50);
+    print("⚠️  DEV MODE ENABLED");
+    print("="*50);
+    print("🔓 All levels unlocked");
+    print("⏭️  Validation skipped");
+    print("📝 Auto-fill code enabled");
+    print("💡 Fast testing mode active");
+    print("="*50 + "\n");
+  }
   
   // Initialize storage
   final storageService = StorageService();

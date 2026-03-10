@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/level_model.dart';
 import '../services/progress_service.dart';
+import '../config/dev_config.dart';
 import 'package:provider/provider.dart';
 
 class LevelCard extends StatelessWidget {
@@ -16,7 +17,11 @@ class LevelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progressService = Provider.of<ProgressService>(context);
-    final isUnlocked = progressService.isLevelUnlocked(level);
+    final levelUnlocked = progressService.isLevelUnlocked(level);
+    
+    // Developer Mode: Unlock all levels
+    final isUnlocked = DevConfig.devMode ? true : levelUnlocked;
+    
     final levelProgress = progressService.getLevelProgress(level.id);
     final isCompleted = levelProgress?.isCompleted ?? false;
     final stars = levelProgress?.starsEarned ?? 0;

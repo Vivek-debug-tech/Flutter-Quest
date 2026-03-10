@@ -3,7 +3,7 @@ import '../models/user_progress_model.dart';
 import '../models/level_model.dart';
 import '../models/world_model.dart';
 import 'storage_service.dart';
-import 'xp_service.dart';
+import '../utils/xp_calculator.dart';
 
 class ProgressService extends ChangeNotifier {
   final StorageService _storageService;
@@ -34,18 +34,9 @@ class ProgressService extends ChangeNotifier {
     required int hintsUsed,
     required int mistakesMade,
   }) async {
-    // Calculate XP and stars
-    final xp = XPService.calculateXP(
-      baseXP: level.baseXP,
-      hintsUsed: hintsUsed,
-      mistakesMade: mistakesMade,
-      challengeType: level.challengeType,
-    );
-    
-    final stars = XPService.calculateStars(
-      hintsUsed: hintsUsed,
-      mistakesMade: mistakesMade,
-    );
+    // Calculate XP and stars using new XPCalculator
+    final xp = XPCalculator.calculateXP(hintsUsed);
+    final stars = XPCalculator.calculateStars(hintsUsed);
 
     // Save level progress
     final levelProgress = LevelProgress(

@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../models/level_model.dart' hide ChallengeType;
 import '../models/challenge_models.dart';
 import '../services/progress_service.dart';
-import '../services/code_validation_service.dart';
 import '../widgets/learning_progress_indicator.dart';
+import '../utils/challenge_validator.dart';
+import '../utils/hint_manager.dart';
+import '../config/dev_config.dart';
 import 'result_screen.dart';
 
 /// Enhanced Challenge Screen with multi-step support, hints, and code validation
@@ -26,15 +28,35 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
   int _currentStepIndex = 0;
   int _hintsUsed = 0;
   int _mistakesMade = 0;
-  int _currentHintIndex = 0;
   String? _userAnswer;
   final TextEditingController _codeController = TextEditingController();
   int _baseXP = 0;
+  late HintManager _hintManager;
 
   @override
   void initState() {
     super.initState();
+    print("\n========================================");
+    print("ACTIVE SCREEN: challenge_screen_enhanced.dart");
+    print("========================================\n");
+    
+    // Developer Mode Warning
+    if (DevConfig.devMode) {
+      print("⚠️  DEV MODE ENABLED - All levels unlocked, validation skipped");
+    }
+    
     _baseXP = widget.level.baseXP;
+    // Initialize hint manager with level hints
+    _hintManager = HintManager(widget.level.hints);
+    
+    // Auto-fill starter code in developer mode
+    if (DevConfig.devMode && DevConfig.autoComplete) {
+      // Use a small delay to ensure controller is ready
+      Future.microtask(() {
+        _codeController.text = widget.level.expectedCode;
+        print("🛠️ DEV MODE: Auto-filled with expected code");
+      });
+    }
   }
 
   @override
@@ -73,165 +95,116 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
   }
 
   void _showHint() {
-    final hints = currentStep?.hints ?? widget.level.hints;
+    final hint = _hintManager.getNextHint();
     
-    if (_currentHintIndex < hints.length) {
-      // Reduce XP reward for using hints
-      const xpPenalty = 5;
-      setState(() {
-        _hintsUsed++;
-        _baseXP = (_baseXP - xpPenalty).clamp(0, 999999);
-      });
-
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Row(
-            children: [
-              const Icon(Icons.lightbulb, color: Colors.amber, size: 28),
-              const SizedBox(width: 12),
-              Text('Hint ${_currentHintIndex + 1}/${hints.length}'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      '-$xpPenalty XP for using hint',
-                      style: TextStyle(
-                        color: Colors.orange.shade700,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                hints[_currentHintIndex],
-                style: const TextStyle(fontSize: 16, height: 1.5),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _currentHintIndex++;
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Got it!', style: TextStyle(fontSize: 16)),
-            ),
-          ],
-        ),
-      );
-    } else {
+    if (hint == null) {
+      // No more hints available
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No more hints available!'),
           backgroundColor: Colors.orange,
         ),
       );
+      return;
     }
+    
+    setState(() {
+      _hintsUsed = _hintManager.hintsUsed;
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.lightbulb, color: Colors.amber, size: 28),
+            const SizedBox(width: 12),
+            Text('Hint ${_hintManager.currentHintIndex}/${HintManager.maxHints}'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _hintManager.getHintDisplayText(),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              hint,
+              style: const TextStyle(fontSize: 16, height: 1.5),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Got it!', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _submitAnswer() {
-    bool isCorrect = false;
-    final step = currentStep;
-    
-    if (step != null) {
-      // Multi-step challenge validation
-      isCorrect = _validateStep(step);
-    } else {
-      // Single-step challenge validation
-      isCorrect = _validateSingleChallenge();
-    }
-
-    if (!isCorrect) {
-      setState(() {
-        _mistakesMade++;
-        _baseXP = (_baseXP - 3).clamp(0, 999999); // Small penalty for mistakes
-      });
-
-      _showIncorrectDialog();
-      return;
-    }
-
-    // If multi-step, move to next step or complete
-    if (widget.challengeSteps != null && _currentStepIndex < totalSteps - 1) {
-      setState(() {
-        _currentStepIndex++;
-        _userAnswer = null;
-        _codeController.clear();
-        _currentHintIndex = 0;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Step ${_currentStepIndex} complete! Moving to next step...'),
-          backgroundColor: Colors.green,
+    // Developer Mode: Skip validation and go straight to results
+    if (DevConfig.devMode && DevConfig.autoComplete) {
+      print("🛠️ DEV MODE: Skipping validation");
+      
+      final progressService = Provider.of<ProgressService>(context, listen: false);
+      progressService.completeLevel(
+        level: widget.level,
+        hintsUsed: 0,
+        mistakesMade: 0,
+      );
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ResultScreen(
+            level: widget.level,
+            hintsUsed: 0,
+            mistakesMade: 0,
+          ),
         ),
       );
       return;
     }
+    
+    // Normal validation flow
+    // Get user's code from the controller
+    String code = _codeController.text;
 
-    // Complete level
-    _completeLevel();
-  }
+    // DEBUG: Print user code before validation
+    print("\n==================== SUBMIT ANSWER ====================");
+    print("USER CODE:");
+    print(code);
+    print("======================================================\n");
 
-  bool _validateStep(ChallengeStep step) {
-    switch (step.type) {
-      case ChallengeType.multipleChoice:
-        if (_userAnswer == null) return false;
-        // Check if selected option is correct
-        final selectedOption = step.options?.firstWhere(
-          (opt) => opt.id == _userAnswer,
-          orElse: () => step.options!.first,
-        );
-        return selectedOption?.isCorrect ?? false;
+    // Validate the code using new validator
+    bool isValid = ChallengeValidator.validateHelloFlutter(code);
 
-      case ChallengeType.fillInBlank:
-        final userInput = _codeController.text.trim();
-        return userInput.toLowerCase() == step.correctAnswer?.toLowerCase();
+    // DEBUG: Print validation result
+    print("VALIDATION RESULT: $isValid\n");
 
-      case ChallengeType.fixTheBug:
-      case ChallengeType.buildWidget:
-      case ChallengeType.interactiveCode:
-        final result = CodeValidationService.validateCode(
-          userCode: _codeController.text,
-          correctAnswer: step.correctAnswer,
-          validationRules: step.validationRules,
-        );
-        return result.isCorrect;
-
-      case ChallengeType.arrangeCode:
-        // TODO: Implement arrange code validation
-        return _codeController.text.isNotEmpty;
-    }
-  }
-
-  bool _validateSingleChallenge() {
-    if (widget.level.challengeType == ChallengeType.multipleChoice) {
-      return _userAnswer != null && _userAnswer!.isNotEmpty;
+    if (isValid) {
+      // Challenge passed!
+      print("✅ Challenge Passed");
+      _completeLevel();
     } else {
-      final result = CodeValidationService.validateCode(
-        userCode: _codeController.text,
-        validationRules: widget.level.validationRules,
-      );
-      return result.isCorrect;
+      // Challenge failed - show error dialog
+      print("❌ Challenge Failed");
+      setState(() {
+        _mistakesMade++;
+      });
+      _showIncorrectDialog();
     }
   }
 
@@ -276,7 +249,7 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
           ],
         ),
         actions: [
-          if (_currentHintIndex < (currentStep?.hints.length ?? widget.level.hints.length))
+          if (_hintManager.hasMoreHints())
             TextButton.icon(
               onPressed: () {
                 Navigator.pop(context);
@@ -294,13 +267,51 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
     );
   }
 
+  /// Calculate XP based on hints used
+  /// Rules:
+  /// - 0 hints used → full XP (60)
+  /// - 1 hint used → -10 XP
+  /// - 2 hints used → -20 XP
+  /// - 3 hints used → -20 XP
+  /// Final XP should never go below 10
+  int calculateXP(int baseXP) {
+    int hintsUsed = _hintManager.hintsUsed;
+    int xp = baseXP;
+
+    if (hintsUsed == 1) {
+      xp -= 10;
+    } else if (hintsUsed == 2) {
+      xp -= 20;
+    } else if (hintsUsed >= 3) {
+      xp -= 20;
+    }
+
+    // Ensure XP never goes below 10
+    if (xp < 10) xp = 10;
+
+    print('💰 XP Calculation:');
+    print('   Base XP: $baseXP');
+    print('   Hints Used: $hintsUsed');
+    print('   Final XP: $xp');
+
+    return xp;
+  }
+
   void _completeLevel() {
+    print('✅ Challenge completed!');
+    print('📊 Hints used: $_hintsUsed');
+    print('❌ Mistakes made: $_mistakesMade');
+    
     final progressService = Provider.of<ProgressService>(context, listen: false);
     progressService.completeLevel(
       level: widget.level,
       hintsUsed: _hintsUsed,
       mistakesMade: _mistakesMade,
     );
+
+    // Calculate final XP
+    final xpEarned = calculateXP(widget.level.baseXP);
+    print('💰 Total XP earned: $xpEarned');
 
     Navigator.pushReplacement(
       context,
@@ -316,19 +327,17 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
 
   @override
   Widget build(BuildContext context) {
-    final hints = currentStep?.hints ?? widget.level.hints;
-    
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.level.title),
         actions: [
-          if (hints.isNotEmpty && _currentHintIndex < hints.length)
+          if (_hintManager.hasMoreHints())
             Stack(
               children: [
                 IconButton(
                   icon: const Icon(Icons.lightbulb_outline),
                   onPressed: _showHint,
-                  tooltip: 'Get a hint (-5 XP)',
+                  tooltip: 'Get a hint',
                 ),
                 Positioned(
                   right: 8,
@@ -336,11 +345,11 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(
-                      color: Colors.red,
+                      color: Colors.amber,
                       shape: BoxShape.circle,
                     ),
                     child: Text(
-                      '${hints.length - _currentHintIndex}',
+                      '${_hintManager.remainingHints}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,

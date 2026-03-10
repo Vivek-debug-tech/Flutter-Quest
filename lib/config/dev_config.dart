@@ -1,0 +1,25 @@
+/// Developer Configuration
+/// 
+/// This file controls developer mode features for testing
+/// 
+/// When devMode is true:
+/// - All levels are unlocked
+/// - Validation is skipped
+/// - Starter code is auto-filled
+/// - Instant navigation to results
+/// 
+/// ⚠️ SET TO FALSE BEFORE PRODUCTION RELEASE!
+
+class DevConfig {
+  /// Enable developer mode for testing
+  /// 
+  /// Set to true during development for fast testing
+  /// Set to false for production builds
+  static const bool devMode = true;
+  
+  /// Print debug information
+  static const bool verboseLogging = true;
+  
+  /// Auto-complete challenges instantly
+  static const bool autoComplete = true;
+}

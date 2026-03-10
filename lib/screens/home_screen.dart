@@ -6,6 +6,8 @@ import '../data/worlds_data.dart';
 import '../services/progress_service.dart';
 import 'level_screen.dart';
 import '../examples/phase1_demo.dart';
+import '../config/dev_config.dart';
+import 'dev_panel_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -18,7 +20,28 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: Colors.grey.shade100,
       body: Column(
         children: [
-          const XPBar(),
+          // Dev Panel Access: Long-press XP bar (only in dev mode)
+          GestureDetector(
+            onLongPress: () {
+              if (DevConfig.devMode) {
+                print("🛠️ Opening Developer Panel (long-press detected)");
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DevPanelScreen(),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('🔒 Developer Panel is disabled'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              }
+            },
+            child: const XPBar(),
+          ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 16),
