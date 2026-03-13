@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:confetti/confetti.dart';
+import 'dart:math';
 import '../models/level_model.dart';
 import '../models/world_model.dart';
 import '../utils/xp_calculator.dart';
@@ -12,12 +14,14 @@ class ResultScreen extends StatefulWidget {
   final Level level;
   final int hintsUsed;
   final int mistakesMade;
+  final List<String> qualityTips;
 
   const ResultScreen({
     Key? key,
     required this.level,
     required this.hintsUsed,
     required this.mistakesMade,
+    this.qualityTips = const [],
   }) : super(key: key);
 
   @override
@@ -27,8 +31,14 @@ class ResultScreen extends StatefulWidget {
 class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
+  late ConfettiController _confettiController;
   late int _earnedXP;
   late int _stars;
+  
+  // Star animation state
+  bool showStar1 = false;
+  bool showStar2 = false;
+  bool showStar3 = false;
 
   @override
   void initState() {
@@ -50,29 +60,57 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
     );
 
     _animationController.forward();
+    
+    // Setup confetti
+    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+    
+    // Start confetti after a short delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _confettiController.play();
+    });
+    
+    // Animate stars appearing one by one
+    if (_stars >= 1) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) setState(() => showStar1 = true);
+      });
+    }
+    if (_stars >= 2) {
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) setState(() => showStar2 = true);
+      });
+    }
+    if (_stars >= 3) {
+      Future.delayed(const Duration(milliseconds: 900), () {
+        if (mounted) setState(() => showStar3 = true);
+      });
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.purple.shade700,
-              Colors.blue.shade600,
-            ],
-          ),
-        ),
-        child: SafeArea(
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.purple.shade700,
+                  Colors.blue.shade600,
+                ],
+              ),
+            ),
+            child: SafeArea(
           child: Column(
             children: [
               const LearningProgressIndicator(currentStep: 4),
@@ -129,8 +167,56 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                 ),
                 const SizedBox(height: 32),
 
-                // Stars
-                StarRating(stars: _stars, size: 48),
+                // Animated Stars
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedOpacity(
+                      opacity: showStar1 ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: AnimatedScale(
+                        scale: showStar1 ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.elasticOut,
+                        child: const Icon(
+                          Icons.star,
+                          color: Colors.amber,
+                          size: 48,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedOpacity(
+                      opacity: showStar2 ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: AnimatedScale(
+                        scale: showStar2 ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.elasticOut,
+                        child: Icon(
+                          _stars >= 2 ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 48,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedOpacity(
+                      opacity: showStar3 ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: AnimatedScale(
+                        scale: showStar3 ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.elasticOut,
+                        child: Icon(
+                          _stars >= 3 ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 48,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 
                 // Performance message
@@ -237,6 +323,72 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                     ],
                   ),
                 ),
+                
+                // Code Quality Tips Section (if tips are available)
+                if (widget.qualityTips.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.blue.shade200, width: 2),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.lightbulb, color: Colors.blue.shade700),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Code Quality Tips',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade900,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Great job! Here are some ways to improve your Flutter code:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...widget.qualityTips.map((tip) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.check_circle_outline,
+                                size: 20,
+                                color: Colors.blue.shade600,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  tip,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade800,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )).toList(),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 32),
 
                 // Action Buttons
@@ -288,7 +440,30 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                 ),
               ],
             ),
-        ),
+          ),
+          ),
+          // Confetti Widget
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirection: pi / 2,
+              maxBlastForce: 5,
+              minBlastForce: 2,
+              emissionFrequency: 0.05,
+              numberOfParticles: 20,
+              gravity: 0.1,
+              colors: const [
+                Colors.amber,
+                Colors.purple,
+                Colors.blue,
+                Colors.green,
+                Colors.pink,
+                Colors.orange,
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

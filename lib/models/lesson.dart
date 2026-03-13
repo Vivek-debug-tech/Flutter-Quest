@@ -14,6 +14,11 @@ class Lesson {
   final int xp;
   final List<String> keyPoints;
   final List<GuidedStepData> guidedSteps;
+  
+  /// Validation patterns required for the challenge to pass
+  /// These patterns are checked against normalized code (whitespace removed)
+  /// Example: ['Row(', 'children:'] for a Row challenge
+  final List<String> requiredPatterns;
 
   Lesson({
     required this.id,
@@ -29,6 +34,7 @@ class Lesson {
     required this.xp,
     required this.keyPoints,
     required this.guidedSteps,
+    this.requiredPatterns = const [],
   });
 }
 

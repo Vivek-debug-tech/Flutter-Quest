@@ -21,5 +21,9 @@ class DevConfig {
   static const bool verboseLogging = true;
   
   /// Auto-complete challenges instantly
-  static const bool autoComplete = true;
+  /// 
+  /// ⚠️ IMPORTANT: Set to FALSE to test error detection and smart hints!
+  /// When true: Skips validation entirely
+  /// When false: Runs normal validation (error detection works)
+  static const bool autoComplete = false;  // Changed to false to test upgrades 3 & 4
 }

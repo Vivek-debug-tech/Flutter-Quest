@@ -76,6 +76,7 @@ class MyApp extends StatelessWidget {
         code: 'void main() {\n  runApp(MyApp());\n}',
       ),
     ],
+    requiredPatterns: ['main(', 'runApp('],
   ),
 
   // ============================================
@@ -177,6 +178,7 @@ void main() {
         code: 'Scaffold(\n  appBar: AppBar(\n    title: Text(\'Welcome\'),\n  ),\n  body: Center(\n    child: Text(\'Learning Flutter\'),\n  ),\n)',
       ),
     ],
+    requiredPatterns: ['Scaffold('],
   ),
 
   // ============================================
@@ -289,6 +291,7 @@ class MyWidget extends StatelessWidget {
         code: 'class MyWidget extends StatelessWidget {\n  @override\n  Widget build(BuildContext context) {\n    return Container(\n      child: Center(\n        child: Text(\'Hello World\'),\n      ),\n    );\n  }\n}',
       ),
     ],
+    requiredPatterns: ['StatelessWidget', 'build'],
   ),
 
   // ============================================
@@ -402,6 +405,7 @@ void main() {
         code: 'AppBar(\n  title: Text(\'My App\'),\n  backgroundColor: Colors.purple,\n  centerTitle: true,\n)',
       ),
     ],
+    requiredPatterns: ['AppBar(', 'title:'],
   ),
 
   // ============================================
@@ -504,6 +508,7 @@ void main() {
         code: 'body: Center(\n  child: Text(\'Flutter is Fun!\'),\n)',
       ),
     ],
+    requiredPatterns: ['Center(', 'child:'],
   ),
 
   // ============================================
@@ -639,6 +644,7 @@ void main() {
         code: 'Row(\n  children: [\n    Icon(Icons.star),\n    Icon(Icons.home),\n  ],\n)',
       ),
     ],
+    requiredPatterns: ['Row(', 'children:'],
   ),
 
   // ============================================
@@ -778,6 +784,7 @@ void main() {
         code: 'Column(\n  children: [\n    Text(\'Welcome\'),\n    Text(\'to\'),\n    Text(\'Flutter\'),\n  ],\n)',
       ),
     ],
+    requiredPatterns: ['Column(', 'children:'],
   ),
 
   // ============================================
@@ -933,6 +940,7 @@ void main() {
         code: 'Expanded(\n  flex: 2,\n  child: Container(...),\n)',
       ),
     ],
+    requiredPatterns: ['Expanded(', 'child:'],
   ),
 
   // ============================================
@@ -1069,6 +1077,7 @@ void main() {
         code: 'Padding(\n  padding: EdgeInsets.all(20.0),\n  child: Text(\n    \'Add padding around me!\',\n    style: TextStyle(fontSize: 20),\n  ),\n)',
       ),
     ],
+    requiredPatterns: ['Padding(', 'EdgeInsets'],
   ),
 
   // ============================================
@@ -1222,6 +1231,7 @@ void main() {
         code: 'Container(\n  width: 150,\n  height: 150,\n  color: Colors.blue,\n  child: Center(\n    child: Text(\'Box\'),\n  ),\n)',
       ),
     ],
+    requiredPatterns: ['Container('],
   ),
 
   // ============================================
@@ -1347,6 +1357,7 @@ void main() {
         code: 'Container(\n  width: 100,\n  height: 100,\n  color: Colors.blue,\n)',
       ),
     ],
+    requiredPatterns: ['Container('],
   ),
 
   // ============================================
@@ -1481,6 +1492,7 @@ void main() {
         code: 'Container(\n  width: 150,\n  height: 150,\n  decoration: BoxDecoration(\n    color: Colors.blue,\n  ),\n)',
       ),
     ],
+    requiredPatterns: ['BoxDecoration('],
   ),
 
   // ============================================
@@ -1615,6 +1627,7 @@ void main() {
         code: 'decoration: BoxDecoration(\n  color: Colors.blue,\n  borderRadius: BorderRadius.circular(12),\n)',
       ),
     ],
+    requiredPatterns: ['BorderRadius'],
   ),
 
   // ============================================
@@ -1758,6 +1771,7 @@ void main() {
         code: 'Text(\n  \'Styled Text\',\n  style: TextStyle(\n    fontSize: 24,\n    fontWeight: FontWeight.bold,\n    color: Colors.blue,\n  ),\n)',
       ),
     ],
+    requiredPatterns: ['TextStyle('],
   ),
 
   // ============================================
@@ -1887,5 +1901,6 @@ void main() {
         code: 'floatingActionButton: FloatingActionButton(\n  onPressed: () {},\n  child: Icon(Icons.add),\n)',
       ),
     ],
+    requiredPatterns: ['FloatingActionButton(', 'onPressed:'],
   ),
 ];

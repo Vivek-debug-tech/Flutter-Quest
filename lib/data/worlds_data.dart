@@ -33,8 +33,8 @@ class GameData {
   runApp(MyApp());
 }''',
           validationRules: [
-            'Must have main() function',
-            'Must call runApp()',
+            'main()',
+            'runApp(',
           ],
           baseXP: 60,
           explanation: '''
@@ -166,9 +166,9 @@ class MyApp extends StatelessWidget {
   ),
 )''',
           validationRules: [
-            'Must use Scaffold',
-            'Must include AppBar',
-            'AppBar must have title',
+            'Scaffold(',
+            'appBar: AppBar(',
+            'title: Text(',
           ],
           baseXP: 60,
           explanation: '''
@@ -282,9 +282,9 @@ void main() {
   }
 }''',
           validationRules: [
-            'Must extend StatelessWidget',
-            'Must override build method',
-            'Must return a widget',
+            'extends StatelessWidget',
+            '@override',
+            'build(BuildContext context)',
           ],
           baseXP: 75,
           explanation: '''
@@ -394,8 +394,8 @@ class MyCard extends StatelessWidget {
   backgroundColor: Colors.blue,
 )''',
           validationRules: [
-            'Must have backgroundColor property',
-            'Must use Colors.blue',
+            'backgroundColor:',
+            'Colors.blue',
           ],
           baseXP: 60,
           explanation: '''
@@ -598,9 +598,9 @@ void main() {
   ],
 )''',
           validationRules: [
-            'Must use Column',
-            'Must have children property',
-            'Must have multiple widgets',
+            'Column(',
+            'children: [',
+            'Text("',
           ],
           baseXP: 60,
           explanation: '''
@@ -703,9 +703,9 @@ void main() {
   ],
 )''',
           validationRules: [
-            'Must use Row',
-            'Must have children property',
-            'Must use Icon widgets',
+            'Row(',
+            'children: [',
+            'Icon(Icons.',
           ],
           baseXP: 60,
           explanation: '''
@@ -903,8 +903,8 @@ void main() {
   ],
 )''',
           validationRules: [
-            'Must use Expanded',
-            'Expanded must wrap the Container',
+            'Expanded(',
+            'child: Container',
           ],
           baseXP: 70,
           explanation: '''
@@ -1006,8 +1006,8 @@ void main() {
   child: Text("Padded text"),
 )''',
           validationRules: [
-            'Must use Padding widget',
-            'Must use EdgeInsets',
+            'Padding(',
+            'padding: EdgeInsets.all',
           ],
           baseXP: 60,
           explanation: '''
@@ -1117,9 +1117,10 @@ void main() {
   color: Colors.blue,
 )''',
           validationRules: [
-            'Must use Container',
-            'Must have width and height',
-            'Must have color',
+            'Container(',
+            'width: 100',
+            'height: 100',
+            'color: Colors.blue',
           ],
           baseXP: 60,
           explanation: '''
@@ -1223,8 +1224,8 @@ void main() {
   ),
 )''',
           validationRules: [
-            'Must use BoxDecoration',
-            'Must have gradient',
+            'decoration: BoxDecoration(',
+            'gradient: LinearGradient',
           ],
           baseXP: 75,
           explanation: '''
@@ -1335,8 +1336,7 @@ void main() {
   ),
 )''',
           validationRules: [
-            'Must use BorderRadius',
-            'Must use circular with value 20',
+            'borderRadius: BorderRadius.circular(20)',
           ],
           baseXP: 60,
           explanation: '''
@@ -1444,9 +1444,9 @@ void main() {
   ),
 )''',
           validationRules: [
-            'Must use TextStyle',
-            'Must have fontSize 24',
-            'Must use FontWeight.bold',
+            'style: TextStyle(',
+            'fontSize: 24',
+            'fontWeight: FontWeight.bold',
           ],
           baseXP: 50,
           explanation: '''
