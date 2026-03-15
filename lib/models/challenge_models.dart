@@ -1,11 +1,9 @@
 /// Challenge types supported by the learning platform
 enum ChallengeType {
+  code,
   multipleChoice,
-  fillInBlank,
-  fixTheBug, // User must fix incorrect code (previously fixCode)
-  buildWidget,
-  arrangeCode, // User arranges code pieces in correct order
-  interactiveCode, // User writes and runs code interactively
+  fixCode,
+  predictOutput,
 }
 
 /// Difficulty levels for game progression
@@ -13,6 +11,39 @@ enum DifficultyLevel {
   beginner,
   intermediate,
   advanced,
+}
+
+/// General-purpose challenge model supporting multiple types
+class Challenge {
+  final ChallengeType type;
+  final String prompt;
+
+  // For code challenges
+  final List<String>? validationRules;
+
+  // For multiple choice
+  final List<String>? options;
+  final int? correctIndex;
+
+  // For fix code
+  final String? brokenCode;
+  final List<String>? fixRules;
+
+  // For predict output
+  final String? codeSnippet;
+  final String? expectedOutput;
+
+  Challenge({
+    required this.type,
+    required this.prompt,
+    this.validationRules,
+    this.options,
+    this.correctIndex,
+    this.brokenCode,
+    this.fixRules,
+    this.codeSnippet,
+    this.expectedOutput,
+  });
 }
 
 /// Represents a single option in a multiple choice question
@@ -82,6 +113,7 @@ class ChallengeStep {
   final String? brokenCode;
   final String? fixedCode;
   final String? bugHint;
+  final String? codeSnippet; // For predict output
   
   // For BuildWidget type
   final String? widgetRequirement;
@@ -110,6 +142,7 @@ class ChallengeStep {
     this.brokenCode,
     this.fixedCode,
     this.bugHint,
+    this.codeSnippet,
     this.widgetRequirement,
     this.requiredWidgets,
     this.expectedOutput,
@@ -133,6 +166,7 @@ class ChallengeStep {
     String? brokenCode,
     String? fixedCode,
     String? bugHint,
+    String? codeSnippet,
     String? widgetRequirement,
     List<String>? requiredWidgets,
     String? expectedOutput,
@@ -155,6 +189,7 @@ class ChallengeStep {
       brokenCode: brokenCode ?? this.brokenCode,
       fixedCode: fixedCode ?? this.fixedCode,
       bugHint: bugHint ?? this.bugHint,
+      codeSnippet: codeSnippet ?? this.codeSnippet,
       widgetRequirement: widgetRequirement ?? this.widgetRequirement,
       requiredWidgets: requiredWidgets ?? this.requiredWidgets,
       expectedOutput: expectedOutput ?? this.expectedOutput,
@@ -180,6 +215,7 @@ class ChallengeStep {
       'brokenCode': brokenCode,
       'fixedCode': fixedCode,
       'bugHint': bugHint,
+      'codeSnippet': codeSnippet,
       'widgetRequirement': widgetRequirement,
       'requiredWidgets': requiredWidgets,
       'expectedOutput': expectedOutput,
@@ -209,6 +245,7 @@ class ChallengeStep {
       brokenCode: json['brokenCode'] as String?,
       fixedCode: json['fixedCode'] as String?,
       bugHint: json['bugHint'] as String?,
+      codeSnippet: json['codeSnippet'] as String?,
       widgetRequirement: json['widgetRequirement'] as String?,
       requiredWidgets: (json['requiredWidgets'] as List<dynamic>?)
           ?.map((e) => e as String)

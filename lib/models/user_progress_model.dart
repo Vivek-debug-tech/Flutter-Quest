@@ -1,4 +1,6 @@
 import 'package:hive/hive.dart';
+import '../managers/level_manager.dart';
+import '../managers/streak_manager.dart';
 
 part 'user_progress_model.g.dart';
 
@@ -16,6 +18,7 @@ class UserProgress extends HiveObject {
   @HiveField(3)
   List<String> completedLevels;
 
+  // Deprecated: replaced by unlockedAchievements
   @HiveField(4)
   List<String> earnedBadges;
 
@@ -33,6 +36,7 @@ class UserProgress extends HiveObject {
     this.currentLevel = 1,
     List<String>? unlockedWorlds,
     List<String>? completedLevels,
+    // Deprecated: replaced by unlockedAchievements
     List<String>? earnedBadges,
     this.currentStreak = 0,
     this.lastLoginDate,
@@ -44,17 +48,12 @@ class UserProgress extends HiveObject {
 
   // Calculate XP required for next level
   int get xpForNextLevel {
-    return (100 * (currentLevel * 1.2)).round();
+    return LevelManager.getNextLevelXP(currentLevel);
   }
 
   // Calculate current level progress percentage
   double get levelProgress {
-    int xpForPrevLevel = currentLevel > 1 
-        ? (100 * ((currentLevel - 1) * 1.2)).round() 
-        : 0;
-    int xpNeeded = xpForNextLevel - xpForPrevLevel;
-    int currentXPInLevel = totalXP - xpForPrevLevel;
-    return (currentXPInLevel / xpNeeded).clamp(0.0, 1.0);
+    return LevelManager.getXPProgress(totalXP);
   }
 
   // Get user title based on level
@@ -69,37 +68,18 @@ class UserProgress extends HiveObject {
   // Add XP and handle level ups
   void addXP(int xp) {
     totalXP += xp;
-    
-    // Check for level up
-    while (totalXP >= xpForNextLevel) {
-      currentLevel++;
-    }
-    
+    currentLevel = LevelManager.getCurrentLevel(totalXP);
     save();
   }
 
   // Update daily streak
   void updateStreak() {
-    final now = DateTime.now();
-    
-    if (lastLoginDate == null) {
-      currentStreak = 1;
-      lastLoginDate = now;
-    } else {
-      final difference = now.difference(lastLoginDate!).inDays;
-      
-      if (difference == 1) {
-        // Consecutive day
-        currentStreak++;
-      } else if (difference > 1) {
-        // Streak broken
-        currentStreak = 1;
-      }
-      // Same day, no change
-      
-      lastLoginDate = now;
-    }
-    
+    final result = StreakManager.updateStreak(
+      lastLoginDate: lastLoginDate,
+      currentStreak: currentStreak,
+    );
+    currentStreak = result.currentStreak;
+    lastLoginDate = result.lastLoginDate;
     save();
   }
 
@@ -132,6 +112,7 @@ class UserProgress extends HiveObject {
 
   // Award badge
   void awardBadge(String badgeId) {
+    // Deprecated: replaced by unlockedAchievements
     if (!earnedBadges.contains(badgeId)) {
       earnedBadges.add(badgeId);
       save();

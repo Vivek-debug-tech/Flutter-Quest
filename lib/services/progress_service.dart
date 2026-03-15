@@ -3,7 +3,9 @@ import '../models/user_progress_model.dart';
 import '../models/level_model.dart';
 import '../models/world_model.dart';
 import 'storage_service.dart';
-import '../utils/xp_calculator.dart';
+import '../managers/achievement_manager.dart';
+import '../managers/star_manager.dart';
+import '../managers/xp_manager.dart';
 
 class ProgressService extends ChangeNotifier {
   final StorageService _storageService;
@@ -15,6 +17,7 @@ class ProgressService extends ChangeNotifier {
   }
 
   UserProgress get userProgress => _userProgress;
+  StorageService get storageService => _storageService;
 
   // Check and update daily streak
   void _checkDailyStreak() {
@@ -29,14 +32,15 @@ class ProgressService extends ChangeNotifier {
   }
 
   // Complete a level
-  Future<void> completeLevel({
+  Future<List<String>> completeLevel({
     required Level level,
     required int hintsUsed,
     required int mistakesMade,
   }) async {
-    // Calculate XP and stars using new XPCalculator
-    final xp = XPCalculator.calculateXP(hintsUsed);
-    final stars = XPCalculator.calculateStars(hintsUsed);
+    _userProgress.updateStreak();
+
+    final xp = XPManager.calculateXP(hintsUsed);
+    final stars = StarManager.calculateStars(hintsUsed);
 
     // Save level progress
     final levelProgress = LevelProgress(
@@ -53,11 +57,18 @@ class ProgressService extends ChangeNotifier {
 
     // Update user progress
     _userProgress.completeLevel(level.id, xp, stars);
-    
-    // Check for badges
+
+    await _storageService.setTotalXP(_userProgress.totalXP);
+    final newlyUnlockedAchievements = await AchievementManager.updateAchievements(
+      storageService: _storageService,
+      userProgress: _userProgress,
+      hintsUsed: hintsUsed,
+    );
+
     _checkBadges(level);
     
     await _saveProgress();
+    return newlyUnlockedAchievements;
   }
 
   // Check and award badges

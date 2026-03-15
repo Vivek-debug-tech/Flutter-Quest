@@ -1,10 +1,7 @@
-/// Code Structure Analyzer for Flutter widget trees
-/// 
-/// This analyzer inspects Flutter code structure and detects common
-/// widget tree mistakes that beginners often make.
-/// 
-/// Returns helpful error messages for structural issues or null if the code
-/// structure looks correct.
+// Code Structure Analyzer for Flutter widget trees
+// Inspects Flutter code structure and detects common widget tree mistakes.
+// Returns helpful error messages for structural issues or null if the code
+// structure looks correct.
 
 /// Severity levels for structure analysis results
 enum AnalyzerSeverity {

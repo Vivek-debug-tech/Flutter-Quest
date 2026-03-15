@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../managers/level_manager.dart';
 import '../services/progress_service.dart';
 
 class XPBar extends StatelessWidget {
@@ -9,6 +11,7 @@ class XPBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final progressService = Provider.of<ProgressService>(context);
     final userProgress = progressService.userProgress;
+    final levelInfo = LevelManager.getLevelProgressInfo(userProgress.totalXP);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -22,7 +25,7 @@ class XPBar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -69,7 +72,7 @@ class XPBar extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${userProgress.totalXP} / ${userProgress.xpForNextLevel} XP',
+                        '${levelInfo.currentLevelXP} / ${levelInfo.xpNeededForNextLevel} XP',
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -79,12 +82,23 @@ class XPBar extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
-                          value: userProgress.levelProgress,
+                          value: levelInfo.progress,
                           backgroundColor: Colors.white30,
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.amber,
+                          ),
                           minHeight: 8,
                         ),
-                      ),
+                      )
+                          .animate(key: ValueKey(userProgress.totalXP))
+                          .fadeIn(duration: 250.ms)
+                          .scaleX(
+                            begin: 0,
+                            end: 1,
+                            alignment: Alignment.centerLeft,
+                            duration: 500.ms,
+                            curve: Curves.easeOutCubic,
+                          ),
                     ],
                   ),
                 ),
@@ -94,9 +108,9 @@ class XPBar extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    color: Colors.white.withValues(alpha: 0.24),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                     child: Column(
                       children: [
                         const Text(

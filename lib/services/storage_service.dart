@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_progress_model.dart';
@@ -5,6 +7,9 @@ import '../models/user_progress_model.dart';
 class StorageService {
   static const String progressBoxName = 'userProgressBox';
   static const String userProgressKey = 'userProgress';
+  static const String unlockedAchievementsKey = 'unlockedAchievements';
+  static const String mistakeCountsKey = 'mistakeCounts';
+  static const String hasCompletedOnboardingKey = 'hasCompletedOnboarding';
   
   // Hive box for structured data
   late Box<UserProgress> _progressBox;
@@ -60,6 +65,43 @@ class StorageService {
 
   int getTotalXP() {
     return _prefs.getInt('totalXP') ?? 0;
+  }
+
+  Future<void> setUnlockedAchievements(List<String> achievementIds) async {
+    await _prefs.setStringList(unlockedAchievementsKey, achievementIds);
+  }
+
+  List<String> getUnlockedAchievements() {
+    return _prefs.getStringList(unlockedAchievementsKey) ?? [];
+  }
+
+  Future<void> setHasCompletedOnboarding(bool value) async {
+    await _prefs.setBool(hasCompletedOnboardingKey, value);
+  }
+
+  bool getHasCompletedOnboarding() {
+    return _prefs.getBool(hasCompletedOnboardingKey) ?? false;
+  }
+
+  Future<void> setMistakeCounts(Map<String, int> mistakeCounts) async {
+    await _prefs.setString(mistakeCountsKey, jsonEncode(mistakeCounts));
+  }
+
+  Map<String, int> getMistakeCounts() {
+    final raw = _prefs.getString(mistakeCountsKey);
+    if (raw == null || raw.isEmpty) {
+      return {};
+    }
+
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map<String, dynamic>) {
+      return {};
+    }
+
+    return decoded.map(
+      (key, value) =>
+          MapEntry(key, value is int ? value : int.tryParse('$value') ?? 0),
+    );
   }
 
   // Save level progress

@@ -1,7 +1,6 @@
-/// Challenge validation utilities for checking user code answers
-/// 
-/// This module provides flexible validation for code challenges,
-/// checking for required patterns rather than exact string matches.
+// ignore_for_file: avoid_print
+// Challenge validation utilities for checking user code answers
+// Provides flexible validation for code challenges using pattern checks.
 
 import '../models/lesson.dart';
 
@@ -24,7 +23,11 @@ class ChallengeValidator {
   /// ```
   /// Both normalize to: `Row(children:[Text('Hi')])`
   static String normalizeCode(String code) {
-    return code.replaceAll(RegExp(r'\s+'), '');
+    return code
+        .replaceAll(RegExp(r'\s+'), '')
+        .replaceAll('\n', '')
+        .replaceAll('\t', '')
+        .toLowerCase();
   }
 
   /// Universal rule-based validation using lesson's requiredPatterns
@@ -82,14 +85,33 @@ class ChallengeValidator {
       return false;
     }
 
-    // Check each required pattern
-    for (String pattern in requiredPatterns) {
-      if (!userCode.contains(pattern)) {
+    final normalizedUser = normalizeCode(userCode);
+    print("Normalized User Code: $normalizedUser");
+    print("Validation Rules: $requiredPatterns");
+
+    for (String rule in requiredPatterns) {
+      final normalizedRule = normalizeCode(rule);
+      if (!normalizedUser.contains(normalizedRule)) {
         return false;
       }
     }
-
     return true;
+  }
+
+  /// Validates a multiple choice answer by comparing selected and correct indexes.
+  static bool validateMultipleChoice(int selectedIndex, int correctIndex) {
+    return selectedIndex == correctIndex;
+  }
+
+  /// Validates predicted output answers using case-insensitive trimmed comparison.
+  static bool validatePredictOutput(String answer, String expectedOutput) {
+    return answer.trim().toLowerCase() ==
+        expectedOutput.trim().toLowerCase();
+  }
+
+  /// Validates fix-code challenges using the same normalized pattern rules as code entry.
+  static bool validateFixCode(String userCode, List<String> fixRules) {
+    return validateCode(userCode, fixRules);
   }
 
   /// Validates Row widget with children property
@@ -269,13 +291,6 @@ class ChallengeValidator {
     return true;
   }
 
-  /// Validates multiple choice answer
-  /// 
-  /// Simple exact match for multiple choice options
-  static bool validateMultipleChoice(String? userAnswer, String correctAnswer) {
-    return userAnswer != null && userAnswer.trim() == correctAnswer.trim();
-  }
-
   /// Checks if code has proper syntax structure (basic check)
   /// 
   /// This is a simple validation that checks for balanced braces
@@ -302,13 +317,13 @@ class ChallengeValidator {
   /// Provides specific feedback based on what's missing in the code
   static String getValidationFeedback(String userCode, List<String> requiredPatterns) {
     List<String> missingPatterns = [];
-
+    final normalizedUser = normalizeCode(userCode);
     for (String pattern in requiredPatterns) {
-      if (!userCode.contains(pattern)) {
+      final normalizedPattern = normalizeCode(pattern);
+      if (!normalizedUser.contains(normalizedPattern)) {
         missingPatterns.add(pattern);
       }
     }
-
     if (missingPatterns.isEmpty) {
       return 'Great job! Your code looks correct.';
     } else if (missingPatterns.length == 1) {

@@ -1,9 +1,5 @@
-/// Manages the progressive hint system for challenges
-/// 
-/// Provides a 3-level hint system that progressively reveals more information:
-/// - Level 1: Conceptual hint about what to do
-/// - Level 2: Syntax hint showing structure
-/// - Level 3: Full answer or near-complete solution
+// Manages the progressive hint system for challenges.
+// Provides a 3-level hint system that progressively reveals more information.
 
 class HintManager {
   final List<String> _hints;
@@ -65,9 +61,9 @@ class HintManager {
   /// Get button text for hint button
   String getHintButtonText() {
     if (_hintsUsed == 0) {
-      return 'Get Hint (${remainingHints} available)';
+      return 'Get Hint ($remainingHints available)';
     } else if (hasMoreHints()) {
-      return 'Get Hint (${remainingHints} left)';
+      return 'Get Hint ($remainingHints left)';
     } else {
       return 'No more hints';
     }

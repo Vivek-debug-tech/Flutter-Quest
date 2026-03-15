@@ -1,11 +1,5 @@
+import 'challenge_models.dart';
 import 'lesson_content_model.dart';
-
-enum ChallengeType {
-  fixBrokenUI,
-  buildFromScratch,
-  dragAndDrop,
-  multipleChoice,
-}
 
 enum DifficultyLevel {
   easy,
@@ -20,11 +14,8 @@ class Level {
   final String title;
   final String concept;
   final String learningObjective;
-  final ChallengeType challengeType;
+  final List<Challenge> challenges;
   final DifficultyLevel difficulty;
-  final String challengeDescription;
-  final String expectedCode;
-  final List<String> validationRules;
   final int baseXP;
   final String explanation;
   final List<String> commonMistakes;
@@ -42,11 +33,8 @@ class Level {
     required this.title,
     required this.concept,
     required this.learningObjective,
-    required this.challengeType,
+    required this.challenges,
     this.difficulty = DifficultyLevel.easy,
-    required this.challengeDescription,
-    required this.expectedCode,
-    required this.validationRules,
     required this.baseXP,
     required this.explanation,
     this.commonMistakes = const [],
@@ -54,7 +42,7 @@ class Level {
     this.isLocked = true,
     this.lessonContent,
     this.guidedExample,
-  });
+  }) : assert(challenges.length > 0, 'Level must contain at least one challenge');
 
   Level copyWith({
     String? id,
@@ -63,11 +51,8 @@ class Level {
     String? title,
     String? concept,
     String? learningObjective,
-    ChallengeType? challengeType,
+    List<Challenge>? challenges,
     DifficultyLevel? difficulty,
-    String? challengeDescription,
-    String? expectedCode,
-    List<String>? validationRules,
     int? baseXP,
     String? explanation,
     List<String>? commonMistakes,
@@ -83,11 +68,8 @@ class Level {
       title: title ?? this.title,
       concept: concept ?? this.concept,
       learningObjective: learningObjective ?? this.learningObjective,
-      challengeType: challengeType ?? this.challengeType,
+      challenges: challenges ?? this.challenges,
       difficulty: difficulty ?? this.difficulty,
-      challengeDescription: challengeDescription ?? this.challengeDescription,
-      expectedCode: expectedCode ?? this.expectedCode,
-      validationRules: validationRules ?? this.validationRules,
       baseXP: baseXP ?? this.baseXP,
       explanation: explanation ?? this.explanation,
       commonMistakes: commonMistakes ?? this.commonMistakes,
@@ -97,6 +79,30 @@ class Level {
       guidedExample: guidedExample ?? this.guidedExample,
     );
   }
+
+  Challenge get primaryChallenge => challenges.first;
+
+  Challenge? get primaryCodeChallenge {
+    for (final challenge in challenges) {
+      if (challenge.type == ChallengeType.code ||
+          challenge.type == ChallengeType.fixCode) {
+        return challenge;
+      }
+    }
+    return challenges.isNotEmpty ? challenges.first : null;
+  }
+
+  String get challengeDescription => primaryChallenge.prompt;
+
+  List<String> get validationRules =>
+      primaryCodeChallenge?.validationRules ??
+      primaryCodeChallenge?.fixRules ??
+      const [];
+
+  String get expectedCode =>
+      lessonContent?.codeExample ??
+      primaryCodeChallenge?.codeSnippet ??
+      primaryChallenge.prompt;
 }
 
 class LevelProgress {

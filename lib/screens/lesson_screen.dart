@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/level_model.dart';
 import '../widgets/learning_progress_indicator.dart';
 import 'guided_example_screen.dart';
@@ -249,7 +250,7 @@ class LessonScreen extends StatelessWidget {
             ),
           ),
         ],
-      ),
+      ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
     );
   }
 
@@ -262,9 +263,9 @@ class LessonScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

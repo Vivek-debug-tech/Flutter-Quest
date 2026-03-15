@@ -1,14 +1,11 @@
-/// Developer Configuration
-/// 
-/// This file controls developer mode features for testing
-/// 
-/// When devMode is true:
-/// - All levels are unlocked
-/// - Validation is skipped
-/// - Starter code is auto-filled
-/// - Instant navigation to results
-/// 
-/// ⚠️ SET TO FALSE BEFORE PRODUCTION RELEASE!
+// Developer Configuration
+// Controls developer mode features for testing
+// When devMode is true:
+// - All levels are unlocked
+// - Validation is skipped
+// - Starter code is auto-filled
+// - Instant navigation to results
+// ⚠️ SET TO FALSE BEFORE PRODUCTION RELEASE!
 
 class DevConfig {
   /// Enable developer mode for testing

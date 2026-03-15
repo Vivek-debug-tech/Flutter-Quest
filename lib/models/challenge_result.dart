@@ -1,7 +1,6 @@
-/// Result model for challenge evaluation
-/// 
-/// Represents the outcome of evaluating user code against challenge requirements.
-/// Includes success status, error messages, and additional metadata.
+// Result model for challenge evaluation
+// Represents the outcome of evaluating user code against challenge requirements.
+// Includes success status, error messages, and additional metadata.
 
 /// Type of error detected in the challenge
 enum ChallengeErrorType {

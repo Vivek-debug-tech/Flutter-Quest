@@ -1,9 +1,6 @@
-/// Code Quality Analyzer for Flutter best practices
-/// 
-/// This analyzer inspects correct Flutter code and provides helpful
-/// best practice suggestions to improve code quality and performance.
-/// 
-/// Returns a list of improvement tips or an empty list if code quality is good.
+// Code Quality Analyzer for Flutter best practices.
+// Inspects Flutter code and provides suggestions to improve quality and performance.
+// Returns a list of improvement tips or an empty list if code quality is good.
 
 class CodeQualityAnalyzer {
   /// Analyzes Flutter code quality and returns best practice suggestions

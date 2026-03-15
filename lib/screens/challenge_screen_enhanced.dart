@@ -1,21 +1,27 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
-// Removed code_text_field, highlight, and flutter_highlight imports
+import 'package:code_text_field/code_text_field.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_highlight/themes/monokai-sublime.dart';
+import 'package:highlight/languages/dart.dart';
 import 'package:provider/provider.dart';
-import '../models/level_model.dart' as level_model;
+import '../models/level_model.dart';
 import '../models/challenge_models.dart' as challenge_model;
 import '../models/challenge_result.dart';
 import '../services/progress_service.dart';
 import '../widgets/learning_progress_indicator.dart';
 import '../utils/hint_manager.dart';
-import '../utils/challenge_validator.dart';
 import '../config/dev_config.dart';
 import '../engine/challenge_engine.dart';
 import '../engine/error_detector.dart';
+import '../managers/mistake_tracker.dart';
+import '../managers/xp_manager.dart';
 import 'result_screen.dart';
 
 /// Enhanced Challenge Screen with multi-step support, hints, and code validation
 class ChallengeScreenEnhanced extends StatefulWidget {
-  final level_model.Level level;
+  final Level level;
   final List<challenge_model.ChallengeStep>?
   challengeSteps; // Optional multi-step challenges
 
@@ -35,17 +41,36 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
   int _hintsUsed = 0;
   int _mistakesMade = 0;
   String? _userAnswer;
-  late TextEditingController _codeController;
+  final TextEditingController _predictOutputController = TextEditingController();
+  late CodeController _codeController;
   String? _liveErrorMessage;
+  bool _isCodeEditorEmpty = true;
   int _baseXP = 0;
   late HintManager _hintManager;
   List<String> _qualityTips =
       []; // Store quality tips from successful evaluation
 
+  String _getFallbackMistakeType() {
+    switch (_activeChallengeType) {
+      case challenge_model.ChallengeType.multipleChoice:
+        return 'multiple_choice_incorrect';
+      case challenge_model.ChallengeType.predictOutput:
+        return 'predict_output_incorrect';
+      case challenge_model.ChallengeType.fixCode:
+        return 'fix_code_validation_failed';
+      case challenge_model.ChallengeType.code:
+        return 'code_validation_failed';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _codeController = TextEditingController();
+    _codeController = CodeController(
+      text: '',
+      language: dart,
+    );
+    _isCodeEditorEmpty = _codeController.text.trim().isEmpty;
     _codeController.addListener(_analyzeCode);
     print("\n========================================");
     print("ACTIVE SCREEN: challenge_screen_enhanced.dart");
@@ -64,7 +89,10 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
     if (DevConfig.devMode && DevConfig.autoComplete) {
       // Use a small delay to ensure controller is ready
       Future.microtask(() {
-        _codeController.text = widget.level.expectedCode;
+        _codeController.text = _getAnswerCodeForCurrentChallenge();
+        setState(() {
+          _isCodeEditorEmpty = _codeController.text.trim().isEmpty;
+        });
         print("🛠️ DEV MODE: Auto-filled with expected code");
       });
     }
@@ -74,6 +102,7 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
   void dispose() {
     _codeController.removeListener(_analyzeCode);
     _codeController.dispose();
+    _predictOutputController.dispose();
     super.dispose();
   }
 
@@ -84,7 +113,23 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
     return null;
   }
 
-  int get totalSteps => widget.challengeSteps?.length ?? 1;
+  List<challenge_model.Challenge> get _levelChallenges =>
+      widget.level.challenges;
+
+  challenge_model.Challenge get _activeChallenge {
+    if (_levelChallenges.isNotEmpty) {
+      return _levelChallenges[_currentStepIndex];
+    }
+
+    return challenge_model.Challenge(
+      type: challenge_model.ChallengeType.code,
+      prompt: widget.level.challengeDescription,
+      validationRules: widget.level.validationRules,
+      codeSnippet: widget.level.expectedCode,
+    );
+  }
+
+  int get totalSteps => _levelChallenges.isNotEmpty ? _levelChallenges.length : 1;
 
   void _analyzeCode() {
     if (!mounted) {
@@ -92,60 +137,50 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
     }
 
     final code = _codeController.text;
+    final isCodeEditorEmpty = code.trim().isEmpty;
     final error = code.trim().isEmpty
         ? null
         : FlutterErrorDetector.detectError(code)?.message;
 
-    if (_liveErrorMessage == error) {
+    if (_liveErrorMessage == error && _isCodeEditorEmpty == isCodeEditorEmpty) {
       return;
     }
 
     setState(() {
+      _isCodeEditorEmpty = isCodeEditorEmpty;
       _liveErrorMessage = error;
     });
   }
 
-  bool get _isMultipleChoiceChallenge {
-    final stepType = currentStep?.type;
-    if (stepType != null) {
-      return stepType == challenge_model.ChallengeType.multipleChoice;
-    }
-
-    return widget.level.challengeType ==
-        level_model.ChallengeType.multipleChoice;
+  challenge_model.ChallengeType get _activeChallengeType {
+    return currentStep?.type ?? _activeChallenge.type;
   }
 
   String getChallengeTypeTitle() {
     final stepType = currentStep?.type;
     if (stepType != null) {
       switch (stepType) {
+        case challenge_model.ChallengeType.code:
+          return 'Code Challenge';
         case challenge_model.ChallengeType.multipleChoice:
           return 'Multiple Choice';
-        case challenge_model.ChallengeType.fillInBlank:
-          return 'Fill in the Blank';
-        case challenge_model.ChallengeType.fixTheBug:
-          return 'Fix the Bug';
-        case challenge_model.ChallengeType.buildWidget:
-          return 'Build Widget';
-        case challenge_model.ChallengeType.arrangeCode:
-          return 'Arrange Code';
-        case challenge_model.ChallengeType.interactiveCode:
-          return 'Interactive Code';
+        case challenge_model.ChallengeType.fixCode:
+          return 'Fix the Code';
+        case challenge_model.ChallengeType.predictOutput:
+          return 'Predict the Output';
       }
     }
 
-    switch (widget.level.challengeType) {
-      case level_model.ChallengeType.multipleChoice:
+    switch (_activeChallenge.type) {
+      case challenge_model.ChallengeType.multipleChoice:
         return 'Multiple Choice';
-      case level_model.ChallengeType.fixBrokenUI:
-        return 'Fix the Bug';
-      case level_model.ChallengeType.buildFromScratch:
-        return 'Build Widget';
-      case level_model.ChallengeType.dragAndDrop:
-        return 'Arrange Code';
+      case challenge_model.ChallengeType.fixCode:
+        return 'Fix the Code';
+      case challenge_model.ChallengeType.predictOutput:
+        return 'Predict the Output';
+      case challenge_model.ChallengeType.code:
+        return 'Code Challenge';
     }
-
-    return 'Code Challenge';
   }
 
   void _showHint() {
@@ -224,7 +259,7 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
     );
   }
 
-  void _submitAnswer() {
+  Future<void> _submitAnswer() async {
     // Developer Mode: Skip validation and go straight to results
     if (DevConfig.devMode && DevConfig.autoComplete) {
       print("🛠️ DEV MODE: Skipping validation");
@@ -233,7 +268,7 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
         context,
         listen: false,
       );
-      progressService.completeLevel(
+      final newlyUnlockedAchievements = await progressService.completeLevel(
         level: widget.level,
         hintsUsed: 0,
         mistakesMade: 0,
@@ -242,36 +277,83 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              ResultScreen(level: widget.level, hintsUsed: 0, mistakesMade: 0),
+          builder: (context) => ResultScreen(
+            level: widget.level,
+            hintsUsed: 0,
+            mistakesMade: 0,
+            newlyUnlockedAchievements: newlyUnlockedAchievements,
+          ),
         ),
       );
       return;
     }
 
-    // Normal validation flow using centralized Challenge Engine
-    String code = _codeController.text;
+    // Build challenge model for validation
+    final activeChallenge = _activeChallenge;
+    final stepOptions = currentStep?.options;
+    final challengeOptions = activeChallenge.options;
+    final correctIndex = stepOptions?.indexWhere((o) => o.isCorrect) ?? -1;
+    final selectedIndex =
+        stepOptions != null && _userAnswer != null
+            ? stepOptions.indexWhere(
+                (o) => o.id == _userAnswer || o.text == _userAnswer,
+              )
+            : challengeOptions != null && _userAnswer != null
+            ? challengeOptions.indexOf(_userAnswer!)
+            : null;
 
-    // DEBUG: Print user code before validation
-    print("\n==================== SUBMIT ANSWER ====================");
-    print("USER CODE:");
-    print(code);
-    print("======================================================\n");
-
-    // Evaluate code using a custom validator that uses the level's validation rules
-    final result = ChallengeEngine.evaluateWithValidator(
-      code,
-      validator: (c) =>
-          ChallengeValidator.validateCode(c, widget.level.validationRules),
+    final challenge = challenge_model.Challenge(
+      type: _activeChallengeType,
+      prompt: currentStep?.question ?? activeChallenge.prompt,
+      validationRules:
+          currentStep?.validationRules ?? activeChallenge.validationRules,
+      options: stepOptions?.map((o) => o.text).toList() ?? activeChallenge.options,
+      correctIndex:
+          correctIndex >= 0 ? correctIndex : activeChallenge.correctIndex,
+      brokenCode: currentStep?.brokenCode ?? activeChallenge.brokenCode,
+      fixRules: currentStep?.validationRules ?? activeChallenge.fixRules,
+      codeSnippet: currentStep?.codeSnippet ?? activeChallenge.codeSnippet,
+      expectedOutput:
+          currentStep?.expectedOutput ?? activeChallenge.expectedOutput,
     );
 
-    // DEBUG: Print evaluation result
-    print("EVALUATION RESULT: ${result.success}");
-    if (!result.success) {
-      print("Error Type: ${result.errorType}");
-      print("Message: ${result.message}");
+    final dynamic userAnswer;
+    switch (_activeChallengeType) {
+      case challenge_model.ChallengeType.multipleChoice:
+        userAnswer = selectedIndex;
+        break;
+      case challenge_model.ChallengeType.predictOutput:
+        userAnswer = _predictOutputController.text;
+        break;
+      case challenge_model.ChallengeType.fixCode:
+      case challenge_model.ChallengeType.code:
+        userAnswer = _codeController.text;
+        break;
     }
-    print("======================================================\n");
+
+    final isValid = ChallengeEngine.validateChallenge(challenge, userAnswer);
+    final detectedError =
+        (_activeChallengeType == challenge_model.ChallengeType.code ||
+                _activeChallengeType == challenge_model.ChallengeType.fixCode) &&
+            userAnswer is String
+        ? FlutterErrorDetector.detectError(userAnswer)
+        : null;
+    final errorHints =
+        detectedError != null
+            ? ChallengeEngine.getHintsForError(detectedError.type)
+            : null;
+    final result = isValid
+        ? ChallengeResult.success()
+        : detectedError != null
+        ? ChallengeResult.syntaxError(
+            detectedError.message,
+            smartHint: errorHints?['smartHint'],
+            quickFix: errorHints?['quickFix'],
+            learningTip: errorHints?['learningTip'],
+          )
+        : ChallengeResult.validationError(
+            'Not quite right. Check your answer and try again.',
+          );
 
     if (result.success) {
       // Challenge passed!
@@ -282,6 +364,15 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
         _qualityTips = result.qualityTips;
       });
 
+      if (_currentStepIndex < totalSteps - 1) {
+        setState(() {
+          _qualityTips = result.qualityTips;
+          _currentStepIndex++;
+          _prepareChallengeInput();
+        });
+        return;
+      }
+
       _completeLevel();
     } else {
       // Challenge failed - show appropriate error dialog
@@ -290,6 +381,15 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
       setState(() {
         _mistakesMade++;
       });
+
+      final progressService = Provider.of<ProgressService>(
+        context,
+        listen: false,
+      );
+      final mistakeTracker = MistakeTracker(progressService.storageService);
+      await mistakeTracker.recordMistake(
+        detectedError?.type ?? _getFallbackMistakeType(),
+      );
 
       _showChallengeResultDialog(result);
     }
@@ -499,14 +599,7 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
   }
 
   Future<void> _revealAnswerAnimated() async {
-    String answer = widget.level.expectedCode;
-    _codeController.clear();
-    for (int i = 0; i < answer.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 10));
-      if (mounted) {
-        _codeController.text += answer[i];
-      }
-    }
+    _codeController.text = _getAnswerCodeForCurrentChallenge();
   }
 
   /// Calculate XP based on hints used
@@ -516,23 +609,12 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
   /// - 2 hints used → -20 XP
   /// - 3 hints used → -20 XP
   /// Final XP should never go below 10
-  int calculateXP(int baseXP) {
-    int hintsUsed = _hintManager.hintsUsed;
-    int xp = baseXP;
-
-    if (hintsUsed == 1) {
-      xp -= 10;
-    } else if (hintsUsed == 2) {
-      xp -= 20;
-    } else if (hintsUsed >= 3) {
-      xp -= 20;
-    }
-
-    // Ensure XP never goes below 10
-    if (xp < 10) xp = 10;
+  int calculateXP() {
+    final hintsUsed = _hintManager.hintsUsed;
+    final xp = XPManager.calculateXP(hintsUsed);
 
     print('💰 XP Calculation:');
-    print('   Base XP: $baseXP');
+    print('   Base XP: 60');
     print('   Hints Used: $hintsUsed');
     print('   Final XP: $xp');
 
@@ -548,27 +630,33 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
       context,
       listen: false,
     );
-    progressService.completeLevel(
-      level: widget.level,
-      hintsUsed: _hintsUsed,
-      mistakesMade: _mistakesMade,
-    );
-
-    // Calculate final XP
-    final xpEarned = calculateXP(widget.level.baseXP);
-    print('💰 Total XP earned: $xpEarned');
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ResultScreen(
+    progressService
+        .completeLevel(
           level: widget.level,
           hintsUsed: _hintsUsed,
           mistakesMade: _mistakesMade,
-          qualityTips: _qualityTips,
-        ),
-      ),
-    );
+        )
+        .then((newlyUnlockedAchievements) {
+          final xpEarned = calculateXP();
+    print('💰 Total XP earned: $xpEarned');
+
+          if (!mounted) {
+            return;
+          }
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResultScreen(
+                level: widget.level,
+                hintsUsed: _hintsUsed,
+                mistakesMade: _mistakesMade,
+                qualityTips: _qualityTips,
+                newlyUnlockedAchievements: newlyUnlockedAchievements,
+              ),
+            ),
+          );
+        });
   }
 
   @override
@@ -623,7 +711,7 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Step ${_currentStepIndex + 1} / $totalSteps',
+                        'Challenge ${_currentStepIndex + 1} / $totalSteps',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -693,8 +781,7 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            currentStep?.description ??
-                                widget.level.learningObjective,
+                            currentStep?.description ?? widget.level.learningObjective,
                             style: TextStyle(
                               color: Colors.purple.shade900,
                               fontWeight: FontWeight.w500,
@@ -715,16 +802,13 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    currentStep?.question ?? widget.level.challengeDescription,
+                    currentStep?.question ?? _activeChallenge.prompt,
                     style: const TextStyle(fontSize: 16, height: 1.5),
                   ),
                   const SizedBox(height: 24),
 
                   // Challenge Input
-                  if (_isMultipleChoiceChallenge)
-                    _buildMultipleChoice()
-                  else
-                    _buildCodeEditor(),
+                  _buildChallengeInput(),
 
                   const SizedBox(height: 24),
 
@@ -762,7 +846,7 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
                       ),
                       child: Text(
                         totalSteps > 1 && _currentStepIndex < totalSteps - 1
-                            ? 'Next Step'
+                            ? 'Next Challenge'
                             : 'Submit Answer',
                         style: const TextStyle(
                           fontSize: 18,
@@ -776,78 +860,178 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
             ),
           ),
         ],
-      ),
+      ).animate().fadeIn(duration: 450.ms).slideY(begin: 0.08, end: 0),
     );
   }
 
   Widget _buildMultipleChoice() {
-    final options = currentStep?.options ?? [];
-    if (options.isEmpty) {
+    final stepOptions = currentStep?.options ?? [];
+    final challengeOptions = _activeChallenge.options ?? [];
+    if (stepOptions.isEmpty && challengeOptions.isEmpty) {
       // Fallback to simple choices for old format
+      final fallback = ['runApp()', 'main()', 'startApp()', 'begin()'];
       return Column(
-        children: [
-          _buildChoiceCard('runApp()', 'runApp()'),
-          _buildChoiceCard('main()', 'main()'),
-          _buildChoiceCard('startApp()', 'startApp()'),
-          _buildChoiceCard('begin()', 'begin()'),
-        ],
+        children: fallback
+            .map(
+              (label) => RadioListTile<String>(
+                title: Text(label),
+                value: label,
+                groupValue: _userAnswer,
+                onChanged: (val) {
+                  setState(() {
+                    _userAnswer = val;
+                  });
+                },
+              ),
+            )
+            .toList(),
       );
     }
 
     return Column(
-      children: options.map((option) {
-        return _buildChoiceCard(option.text, option.id);
-      }).toList(),
+      children: stepOptions.isNotEmpty
+          ? stepOptions.asMap().entries.map((entry) {
+              final option = entry.value;
+              final value = option.id.isNotEmpty ? option.id : option.text;
+              return RadioListTile<String>(
+                value: value,
+                groupValue: _userAnswer,
+                onChanged: (val) {
+                  setState(() {
+                    _userAnswer = val;
+                  });
+                },
+                title: Text(option.text),
+                subtitle: option.explanation != null
+                    ? Text(
+                        option.explanation!,
+                        style: const TextStyle(fontSize: 12),
+                      )
+                    : null,
+              );
+            }).toList()
+          : challengeOptions.map((option) {
+              return RadioListTile<String>(
+                value: option,
+                groupValue: _userAnswer,
+                onChanged: (val) {
+                  setState(() {
+                    _userAnswer = val;
+                  });
+                },
+                title: Text(option),
+              );
+            }).toList(),
     );
   }
 
-  Widget _buildChoiceCard(String label, String value) {
-    final isSelected = _userAnswer == value;
+  String _getPrefillCodeForCurrentChallenge() {
+    if (_activeChallengeType == challenge_model.ChallengeType.fixCode) {
+      return _activeChallenge.brokenCode ?? widget.level.expectedCode;
+    }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: isSelected ? Colors.blue.shade50 : null,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? Colors.blue : Colors.grey.shade300,
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _userAnswer = value;
-          });
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(
-                isSelected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: isSelected ? Colors.blue : Colors.grey,
+    return '';
+  }
+
+  String _getAnswerCodeForCurrentChallenge() {
+    return _activeChallenge.codeSnippet ?? widget.level.expectedCode;
+  }
+
+  void _prepareChallengeInput() {
+    final nextPrefill = _getPrefillCodeForCurrentChallenge();
+    _codeController.text =
+        _activeChallengeType == challenge_model.ChallengeType.code ||
+                _activeChallengeType == challenge_model.ChallengeType.fixCode
+            ? nextPrefill
+            : '';
+    _predictOutputController.clear();
+    _userAnswer = null;
+    _liveErrorMessage = null;
+    _isCodeEditorEmpty = _codeController.text.trim().isEmpty;
+  }
+
+  Widget _buildFixCode() {
+    final broken = currentStep?.brokenCode ?? _activeChallenge.brokenCode;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (broken != null && broken.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Text(
+              broken,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 14,
+                color: Colors.orange,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: isSelected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                ),
-              ),
-            ],
+            ),
+          ),
+        ],
+        _buildCodeEditor(),
+      ],
+    );
+  }
+
+  Widget _buildPredictOutput() {
+    final snippet =
+        currentStep?.codeSnippet ??
+        _activeChallenge.codeSnippet ??
+        _activeChallenge.prompt;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade900,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade700),
+          ),
+          child: Text(
+            snippet,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 14,
+              color: Colors.white,
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _predictOutputController,
+          decoration: const InputDecoration(
+            labelText: 'Your predicted output',
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (value) {
+            _userAnswer = value;
+          },
+        ),
+      ],
     );
+  }
+
+  Widget _buildChallengeInput() {
+    switch (_activeChallengeType) {
+      case challenge_model.ChallengeType.multipleChoice:
+        return _buildMultipleChoice();
+      case challenge_model.ChallengeType.fixCode:
+        return _buildFixCode();
+      case challenge_model.ChallengeType.predictOutput:
+        return _buildPredictOutput();
+      case challenge_model.ChallengeType.code:
+      default:
+        return _buildCodeEditor();
+    }
   }
 
   Widget _buildCodeEditor() {
@@ -906,22 +1090,44 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
               ],
             ),
           ),
-          TextField(
-            controller: _codeController,
-            maxLines: 10,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              color: Colors.white,
-              fontSize: 14,
-            ),
-            decoration: InputDecoration(
-              hintText:
-                  currentStep?.brokenCode ??
-                  '// Write your Flutter code here...',
-              hintStyle: const TextStyle(color: Colors.white38),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(16),
-            ),
+          Stack(
+            children: [
+              CodeTheme(
+                data: CodeThemeData(styles: monokaiSublimeTheme),
+                child: CodeField(
+                  controller: _codeController,
+                  textStyle: const TextStyle(
+                    fontFamily: 'monospace',
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                  maxLines: 10,
+                  padding: const EdgeInsets.all(16),
+                  lineNumberStyle: const LineNumberStyle(
+                    width: 48,
+                    margin: 8,
+                    textStyle: TextStyle(color: Colors.white38),
+                  ),
+                  background: Colors.grey.shade900,
+                ),
+              ),
+              if (_isCodeEditorEmpty)
+                IgnorePointer(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(72, 16, 16, 16),
+                    child: Text(
+                      currentStep?.brokenCode ??
+                          _activeChallenge.brokenCode ??
+                          '// Write your Flutter code here...',
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           if (_liveErrorMessage != null)
             Container(
@@ -949,9 +1155,9 @@ class _ChallengeScreenEnhancedState extends State<ChallengeScreenEnhanced> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

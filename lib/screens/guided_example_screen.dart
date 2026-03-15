@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/level_model.dart';
 import '../widgets/learning_progress_indicator.dart';
 import 'challenge_screen_enhanced.dart';
@@ -404,7 +405,7 @@ class _GuidedExampleScreenState extends State<GuidedExampleScreen> {
             ),
           ),
         ],
-      ),
+      ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
     );
   }
 

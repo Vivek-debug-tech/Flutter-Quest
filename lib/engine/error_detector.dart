@@ -1,7 +1,6 @@
-/// Flutter Beginner Error Detection Engine
-/// 
-/// Detects common beginner mistakes in Flutter code and provides
-/// helpful feedback to improve the learning experience.
+// Flutter Beginner Error Detection Engine
+// Detects common beginner mistakes in Flutter code and provides
+// helpful feedback to improve the learning experience.
 
 /// Result of error detection containing error type and message
 class ErrorResult {

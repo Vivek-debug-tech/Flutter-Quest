@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print, prefer_interpolation_to_compose_strings
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,6 +7,7 @@ import 'services/storage_service.dart';
 import 'services/progress_service.dart';
 import 'config/dev_config.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,14 +27,25 @@ void main() async {
   // Initialize storage
   final storageService = StorageService();
   await storageService.init();
+  final hasCompletedOnboarding = storageService.getHasCompletedOnboarding();
   
-  runApp(FlutterQuestApp(storageService: storageService));
+  runApp(
+    FlutterQuestApp(
+      storageService: storageService,
+      hasCompletedOnboarding: hasCompletedOnboarding,
+    ),
+  );
 }
 
 class FlutterQuestApp extends StatelessWidget {
   final StorageService storageService;
+  final bool hasCompletedOnboarding;
 
-  const FlutterQuestApp({Key? key, required this.storageService}) : super(key: key);
+  const FlutterQuestApp({
+    Key? key,
+    required this.storageService,
+    required this.hasCompletedOnboarding,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +77,9 @@ class FlutterQuestApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const HomeScreen(),
+        home: hasCompletedOnboarding
+            ? const HomeScreen()
+            : OnboardingScreen(storageService: storageService),
       ),
     );
   }

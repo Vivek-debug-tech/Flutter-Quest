@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../config/dev_config.dart';
+import '../models/challenge_models.dart' show ChallengeType;
 import '../models/level_model.dart';
 import '../services/progress_service.dart';
-import '../config/dev_config.dart';
-import 'package:provider/provider.dart';
 
 class LevelCard extends StatelessWidget {
   final Level level;
   final VoidCallback onTap;
 
   const LevelCard({
-    Key? key,
+    super.key,
     required this.level,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final progressService = Provider.of<ProgressService>(context);
     final levelUnlocked = progressService.isLevelUnlocked(level);
-    
-    // Developer Mode: Unlock all levels
     final isUnlocked = DevConfig.devMode ? true : levelUnlocked;
-    
     final levelProgress = progressService.getLevelProgress(level.id);
     final isCompleted = levelProgress?.isCompleted ?? false;
     final stars = levelProgress?.starsEarned ?? 0;
@@ -37,16 +35,20 @@ class LevelCard extends StatelessWidget {
       }
     }
 
-    String getChallengeTypeIcon() {
-      switch (level.challengeType) {
+    String getChallengeTypeLabel() {
+      if (level.challenges.length > 1) {
+        return 'MIX';
+      }
+
+      switch (level.primaryChallenge.type) {
         case ChallengeType.multipleChoice:
-          return '📝';
-        case ChallengeType.fixBrokenUI:
-          return '🔧';
-        case ChallengeType.buildFromScratch:
-          return '🏗️';
-        case ChallengeType.dragAndDrop:
-          return '🎯';
+          return 'MC';
+        case ChallengeType.fixCode:
+          return 'FIX';
+        case ChallengeType.predictOutput:
+          return 'OUT';
+        case ChallengeType.code:
+          return 'CODE';
       }
     }
 
@@ -65,7 +67,6 @@ class LevelCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Level Number Circle
                 Container(
                   width: 50,
                   height: 50,
@@ -78,8 +79,8 @@ class LevelCard extends StatelessWidget {
                   child: Center(
                     child: Text(
                       isUnlocked
-                          ? (isCompleted ? '✓' : '${level.levelNumber}')
-                          : '🔒',
+                          ? (isCompleted ? 'OK' : '${level.levelNumber}')
+                          : 'L',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -89,7 +90,6 @@ class LevelCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Level Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,16 +104,33 @@ class LevelCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Text(
-                            getChallengeTypeIcon(),
-                            style: const TextStyle(fontSize: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.blue.shade200),
+                            ),
+                            child: Text(
+                              getChallengeTypeLabel(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            level.concept,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              level.concept,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
                             ),
                           ),
                         ],
@@ -127,7 +144,7 @@ class LevelCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: getDifficultyColor().withOpacity(0.2),
+                              color: getDifficultyColor().withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -150,7 +167,7 @@ class LevelCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Icon(Icons.bolt, size: 14, color: Colors.amber),
+                          const Icon(Icons.bolt, size: 14, color: Colors.amber),
                           const SizedBox(width: 2),
                           Text(
                             '${level.baseXP} XP',
@@ -164,7 +181,6 @@ class LevelCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Stars
                 if (isCompleted)
                   Row(
                     children: List.generate(
